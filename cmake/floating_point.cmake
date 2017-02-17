@@ -32,7 +32,7 @@ SET(code "
     /*
       s should now be either 5e 74 d1 45 17 5d 14 40 or
       40 14 5d 17 45 d1 74 5e, depending on endianness. If the floating point
-      operations are optimizaed with fused multiply-add instructions, the least
+      operations are optimized with fused multiply-add instructions, the least
       significant byte is 5d instead of 5e.
     */
     return (*(unsigned char*)(&s) == 0x5e ||
@@ -51,6 +51,18 @@ ENDIF()
 
 IF(CMAKE_COMPILER_IS_GNUCXX)
   CHECK_CXX_SOURCE_RUNS("${code}" HAVE_CXX_FLOATING_POINT_FUSED_MADD)
+ENDIF()
+
+SET(CMAKE_REQUIRED_FLAGS
+  "${CMAKE_REQUIRED_FLAGS} -ffp-contract=off"
+)
+
+IF(CMAKE_COMPILER_IS_GNUCC)
+  CHECK_C_SOURCE_COMPILES("${code}" HAVE_C_FP_CONTRACT_FLAG)
+ENDIF()
+
+IF(CMAKE_COMPILER_IS_GNUCXX)
+  CHECK_CXX_SOURCE_COMPILES("${code}" HAVE_CXX_FP_CONTRACT_FLAG)
 ENDIF()
 
 SET(CMAKE_REQUIRED_FLAGS "${SAVE_CMAKE_REQUIRED_FLAGS}")

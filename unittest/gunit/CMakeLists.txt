@@ -13,28 +13,37 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-# We want gmock-1.7.0.zip in order to build these unit tests.
+# We want release-1.8.0.zip in order to build these unit tests.
 # If you have already downloaded it,
-# invoke cmake with -DWITH_GMOCK=/path/to/gmock-1.7.0.zip
+# invoke cmake with -DWITH_GMOCK=/path/to/release-1.8.0.zip
 #                or -DWITH_GMOCK=/path/to
 #
 # Alternatively, set an environment variable
-# export WITH_GMOCK=/path/to/gmock-1.7.0.zip
+# export WITH_GMOCK=/path/to/release-1.8.0.zip
 #
 # You can also do cmake -DENABLE_DOWNLOADS=1 
-# and we will download it from http://googlemock.googlecode.com
+# and we will download it from https://github.com/google/googletest/archive/
 #
 # Either way: we will unpack the zip, compile gmock-all.cc and gtest-all.cc
 # and link them into the executables.
+
+# Disable googletest for Solaris Studio < 12.4 since it doesn't compile.
+IF(CMAKE_C_COMPILER_ID MATCHES "SunPro")
+  IF(${CC_MINOR_VERSION} LESS 13)
+    MESSAGE(WARNING "Googletest requires Solaris Studio 12.4 or newer.")
+    UNSET(GMOCK_FOUND)
+    UNSET(GMOCK_FOUND CACHE)
+    RETURN()
+  ENDIF()
+ENDIF()
 
 # Default location for where to download and build gmock/gtest.
 IF(NOT DOWNLOAD_ROOT)
   SET(DOWNLOAD_ROOT ${CMAKE_SOURCE_DIR}/source_downloads)
 ENDIF()
 
-# We want googletest and googlemock version 1.7.
-SET(GTEST_PACKAGE_NAME "googletest-release-1.7.0")
-SET(GMOCK_PACKAGE_NAME "googlemock-release-1.7.0")
+# We want googletest version 1.8, which also contains googlemock.
+SET(GMOCK_PACKAGE_NAME "release-1.8.0")
 
 IF (DEFINED ENV{WITH_GMOCK} AND NOT DEFINED WITH_GMOCK)
   FILE(TO_CMAKE_PATH "$ENV{WITH_GMOCK}" WITH_GMOCK)
@@ -43,15 +52,6 @@ ENDIF()
 IF(LOCAL_GMOCK_ZIP
    AND NOT ${LOCAL_GMOCK_ZIP} MATCHES ".*${GMOCK_PACKAGE_NAME}\\.zip")
  SET(LOCAL_GMOCK_ZIP 0)
-ENDIF()
-
-IF (DEFINED ENV{WITH_GTEST} AND NOT DEFINED WITH_GTEST)
-  FILE(TO_CMAKE_PATH "$ENV{WITH_GTEST}" WITH_GTEST)
-ENDIF()
-
-IF(LOCAL_GTEST_ZIP
-   AND NOT ${LOCAL_GTEST_ZIP} MATCHES ".*${GTEST_PACKAGE_NAME}\\.zip")
- SET(LOCAL_GTEST_ZIP 0)
 ENDIF()
 
 IF (WITH_GMOCK)
@@ -66,8 +66,9 @@ IF (WITH_GMOCK)
              )
   ELSE()
     ## Did we get a path name to the directory of the .zip file?
+    ## Check for both release-x.y.z.zip and googletest-release-x.y.z.zip
     FIND_FILE(LOCAL_GMOCK_ZIP
-              NAMES "${GMOCK_PACKAGE_NAME}.zip"
+              NAMES "${GMOCK_PACKAGE_NAME}.zip" "googletest-${GMOCK_PACKAGE_NAME}.zip"
               PATHS ${WITH_GMOCK}
               NO_DEFAULT_PATH
               )
@@ -77,34 +78,11 @@ IF (WITH_GMOCK)
   MESSAGE(STATUS "Local gmock zip ${LOCAL_GMOCK_ZIP}")
 ENDIF()
 
-IF (WITH_GTEST)
-  ## Did we get a full path name, including file name?
-  IF (${WITH_GTEST} MATCHES ".*\\.zip")
-    GET_FILENAME_COMPONENT(GTEST_DIR ${WITH_GTEST} PATH)
-    GET_FILENAME_COMPONENT(GTEST_ZIP ${WITH_GTEST} NAME)
-    FIND_FILE(LOCAL_GTEST_ZIP
-              NAMES ${GTEST_ZIP}
-              PATHS ${GTEST_DIR}
-              NO_DEFAULT_PATH
-             )
-  ELSE()
-    ## Did we get a path name to the directory of the .zip file?
-    FIND_FILE(LOCAL_GTEST_ZIP
-              NAMES "${GTEST_PACKAGE_NAME}.zip"
-              PATHS ${WITH_GTEST}
-              NO_DEFAULT_PATH
-              )
-    ## If WITH_GTEST is a directory, use it for download.
-    SET(DOWNLOAD_ROOT ${WITH_GTEST})
-  ENDIF()
-  MESSAGE(STATUS "Local gtest zip ${LOCAL_GTEST_ZIP}")
-ENDIF()
-
 IF(NOT EXISTS DOWNLOAD_ROOT)
   MAKE_DIRECTORY(${DOWNLOAD_ROOT})
 ENDIF()
-SET(GMOCK_SOURCE_DIR ${DOWNLOAD_ROOT}/${GMOCK_PACKAGE_NAME})
-SET(GTEST_SOURCE_DIR ${DOWNLOAD_ROOT}/${GMOCK_PACKAGE_NAME}/gtest)
+SET(GMOCK_SOURCE_DIR ${DOWNLOAD_ROOT}/googletest-${GMOCK_PACKAGE_NAME}/googlemock)
+SET(GTEST_SOURCE_DIR ${DOWNLOAD_ROOT}/googletest-${GMOCK_PACKAGE_NAME}/googletest)
 
 # We may have downloaded gmock/gtest already, building in a different directory.
 IF(EXISTS ${GMOCK_SOURCE_DIR} OR EXISTS ${LOCAL_GMOCK_ZIP})
@@ -119,17 +97,6 @@ ELSE()
   SET(GMOCK_INCLUDE_DIRS 0 CACHE INTERNAL "")
 ENDIF()
 
-# We may have downloaded gmock/gtest already, building in a different directory.
-IF(EXISTS ${GTEST_SOURCE_DIR} OR EXISTS ${LOCAL_GTEST_ZIP})
-  MESSAGE(STATUS "GTEST_SOURCE_DIR:${GTEST_SOURCE_DIR}")
-  SET(GTEST_DOWNLOADED 1 CACHE INTERNAL "")
-  SET(GTEST_FOUND 1 CACHE INTERNAL "")
-# If source dir does not exist, reset dependent variables (might be set from before).
-ELSE()
-  SET(LOCAL_GTEST_ZIP 0 CACHE INTERNAL "")
-  SET(GTEST_DOWNLOADED 0 CACHE INTERNAL "")
-  SET(GTEST_FOUND 0 CACHE INTERNAL "")
-ENDIF()
 
 IF(LOCAL_GMOCK_ZIP AND NOT EXISTS ${GMOCK_SOURCE_DIR})
   # Unpack tarball
@@ -143,58 +110,38 @@ IF(LOCAL_GMOCK_ZIP AND NOT EXISTS ${GMOCK_SOURCE_DIR})
   ENDIF()
 ENDIF()
 
-IF(LOCAL_GTEST_ZIP AND NOT EXISTS ${GTEST_SOURCE_DIR})
-  # Unpack tarball
-  EXECUTE_PROCESS(
-    COMMAND ${CMAKE_COMMAND} -E tar xfz  "${LOCAL_GTEST_ZIP}"
-    WORKING_DIRECTORY "${DOWNLOAD_ROOT}"
-    RESULT_VARIABLE tar_result
-  )
-  IF (tar_result MATCHES 0)
-    # Rename the directory
-    FILE(RENAME "${DOWNLOAD_ROOT}/${GTEST_PACKAGE_NAME}" "${GTEST_SOURCE_DIR}")
-    SET(GTEST_FOUND 1 CACHE INTERNAL "")
-  ENDIF()
-ENDIF()
 
 OPTION(ENABLE_DOWNLOADS
-  "Download and build 3rd party source code components, e.g. google mock"
+  "Download and build 3rd party source code components, e.g. googletest"
   OFF)
 
 # While experimenting, use local URL rather than google.
-SET(GMOCK_TARBALL "${GMOCK_PACKAGE_NAME}.zip")
-SET(GMOCK_DOWNLOAD_URL
-  "http://github.com/google/googlemock/archive/release-1.7.0.zip"
+SET(GMOCK_TARBALL "googletest-${GMOCK_PACKAGE_NAME}.zip")
+SET(GMOCK_DOWNLOAD_URL 
+  "https://github.com/google/googletest/archive/${GMOCK_PACKAGE_NAME}.zip"
   )
-SET(GTEST_TARBALL "${GTEST_PACKAGE_NAME}.zip")
-SET(GTEST_DOWNLOAD_URL
-  "http://github.com/google/googletest/archive/release-1.7.0.zip"
-  )
-
+  
 MACRO(HTTP_PROXY_HINT)
   MESSAGE(STATUS
-    "If you are inside a firewall, you may need to use an http proxy: "
-    "export http_proxy=http://example.com:80")
+    "If you are inside a firewall, you may need to use an https proxy: "
+    "export https_proxy=http://example.com:80")
 ENDMACRO()
 
 
 IF(NOT GMOCK_FOUND)
   IF(NOT ENABLE_DOWNLOADS)
-    # Give one-time warning
-    IF(NOT ONETIME_GTEST_WARNING)
-      MESSAGE(STATUS 
-        "Googlemock was not found. gtest-based unit tests will be disabled. "
-        "You can run cmake . -DENABLE_DOWNLOADS=1 to automatically download "
-        "and build required components from source.")
-      HTTP_PROXY_HINT()
-      SET(ONETIME_GTEST_WARNING 1 CACHE INTERNAL "")
-    ENDIF()
+    # Give warning
+    MESSAGE(STATUS
+      "Googletest was not found. gtest-based unit tests will be disabled. "
+      "You can run cmake . -DENABLE_DOWNLOADS=1 to automatically download "
+      "and build required components from source.")
+    HTTP_PROXY_HINT()
     RETURN()
   ENDIF()
   
-  # Download gmock source
+  # Download googletest source
   IF(NOT EXISTS ${GMOCK_SOURCE_DIR})
-    IF(NOT EXISTS ${DOWNLOAD_ROOT}/${GMOCK_PACKAGE_NAME}.zip)
+    IF(NOT EXISTS ${DOWNLOAD_ROOT}/${GMOCK_TARBALL})
       # Download the tarball
       # Use CMake builtin download capabilities
       FILE(DOWNLOAD ${GMOCK_DOWNLOAD_URL}
@@ -209,12 +156,11 @@ IF(NOT GMOCK_FOUND)
 
       IF (DOWNLOAD_SUCCEEDED)
         MESSAGE(STATUS 
-          "Successfully downloaded ${GMOCK_DOWNLOAD_URL} to "
-          "${DOWNLOAD_ROOT}/${GMOCK_TARBALL}")
+          "Successfully downloaded ${GMOCK_DOWNLOAD_URL} to ${DOWNLOAD_ROOT}")
       ELSE()
         MESSAGE(STATUS 
-          "To enable google test, please download ${GMOCK_DOWNLOAD_URL} "
-          "to the directory ${DOWNLOAD_ROOT}/${GMOCK_TARBALL}")
+          "To enable googletest, please download ${GMOCK_DOWNLOAD_URL} "
+          "to the directory ${DOWNLOAD_ROOT}")
         HTTP_PROXY_HINT()
         RETURN()
       ENDIF()
@@ -232,63 +178,8 @@ IF(NOT GMOCK_FOUND)
   ENDIF()
 ENDIF()
 
-IF(NOT GTEST_FOUND)
-  IF(NOT ENABLE_DOWNLOADS)
-    # Give one-time warning
-    IF(NOT ONETIME_GTEST_WARNING)
-      MESSAGE(STATUS
-        "Googletest was not found. gtest-based unit tests will be disabled. "
-        "You can run cmake . -DENABLE_DOWNLOADS=1 to automatically download "
-        "and build required components from source.")
-      HTTP_PROXY_HINT()
-      SET(ONETIME_GTEST_WARNING 1 CACHE INTERNAL "")
-    ENDIF()
-    RETURN()
-  ENDIF()
 
-  # Download gtest source
-  IF(NOT EXISTS ${GTEST_SOURCE_DIR})
-    IF(NOT EXISTS ${DOWNLOAD_ROOT}/${GTEST_PACKAGE_NAME}.zip)
-      # Download the tarball
-      # Use CMake builtin download capabilities
-      FILE(DOWNLOAD ${GTEST_DOWNLOAD_URL}
-        ${DOWNLOAD_ROOT}/${GTEST_TARBALL} TIMEOUT 30 STATUS ERR)
-      IF(ERR EQUAL 0)
-        SET(DOWNLOAD_SUCCEEDED 1)
-      ELSE()
-        MESSAGE(STATUS "Download failed, error: ${ERR}")
-        # A failed DOWNLOAD leaves an empty file, remove it
-        FILE(REMOVE ${DOWNLOAD_ROOT}/${GTEST_TARBALL})
-      ENDIF()
-
-      IF (DOWNLOAD_SUCCEEDED)
-        MESSAGE(STATUS
-          "Successfully downloaded ${GTEST_DOWNLOAD_URL} to "
-          "${DOWNLOAD_ROOT}/${GTEST_TARBALL}")
-      ELSE()
-        MESSAGE(STATUS
-          "To enable google test, please download ${GTEST_DOWNLOAD_URL} "
-          "to the directory ${DOWNLOAD_ROOT}/${GTEST_TARBALL}")
-        HTTP_PROXY_HINT()
-        RETURN()
-      ENDIF()
-    ENDIF()
-
-    # Unpack tarball
-    EXECUTE_PROCESS(
-      COMMAND ${CMAKE_COMMAND} -E tar xfz  "${DOWNLOAD_ROOT}/${GTEST_TARBALL}"
-        WORKING_DIRECTORY "${DOWNLOAD_ROOT}"
-      )
-    # Rename the directory
-    FILE(RENAME "${DOWNLOAD_ROOT}/${GTEST_PACKAGE_NAME}" "${GTEST_SOURCE_DIR}")
-  ENDIF()
-  IF(EXISTS ${GTEST_SOURCE_DIR})
-    SET(GTEST_DOWNLOADED 1 CACHE INTERNAL "")
-    SET(GTEST_FOUND 1 CACHE INTERNAL "")
-  ENDIF()
-ENDIF()
-
-IF(NOT GMOCK_FOUND OR NOT GTEST_FOUND)
+IF(NOT GMOCK_FOUND)
   RETURN()
 ENDIF()
 
