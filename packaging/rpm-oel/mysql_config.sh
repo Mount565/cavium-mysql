@@ -16,8 +16,8 @@ esac
 if [ "$bits" = "unknown" ] ; then
     arch=$(uname -m)
     case $arch in
-	x86_64|ppc64|aarch64) bits=64 ;;
-	i386|i486|i586|i686|pentium3|pentium4|athlon|ppc) bits=32 ;;
+	x86_64|ppc64|ppc64le|aarch64|s390x|sparc64) bits=64 ;;
+	i386|i486|i586|i686|pentium3|pentium4|athlon|ppc|s390|sparc) bits=32 ;;
 	*) bits=unknown ;;
     esac
 fi
