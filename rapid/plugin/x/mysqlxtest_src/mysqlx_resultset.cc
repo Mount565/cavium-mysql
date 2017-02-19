@@ -590,7 +590,6 @@ ngs::shared_ptr<Row> Result::next()
         read_stmt_ok();
     }
   }
-}
 
   return ret_val;
 }
