@@ -30,6 +30,7 @@ Created 2012/04/12 by Sunny Bains
 #include <my_rdtsc.h>
 #include "univ.i"
 #include "os0thread.h"
+#include "ut0rnd.h"
 
 /** CPU cache line size */
 #ifndef UNIV_HOTBACKUP
@@ -103,6 +104,22 @@ struct get_sched_indexer_t : public generic_indexer_t<Type, N> {
 };
 #endif /* HAVE_SCHED_GETCPU */
 
+/** Use the random number to index into the counter array. */
+template <typename Type=ulint, int N=1>
+struct get_rand_indexer_t : public generic_indexer_t<Type, N> {
+	/** Default constructor/destructor should be OK. */
+
+	enum { fast = 1 };
+
+	/* @return result from ut_rnd_gen_ulint(). */
+	static size_t get_rnd_index() UNIV_NOTHROW {
+
+		ulint	idx = ut_rnd_gen_ulint();
+
+		return(size_t(idx));
+	}
+};
+
 /** Use the result of my_timer_cycles(), which mainly uses RDTSC for cycles,
 to index into the counter array. See the comments for my_timer_cycles() */
 template <typename Type=ulint, int N=1>
@@ -156,7 +173,9 @@ struct single_indexer_t {
 	}
 };
 
-#if defined(HAVE_SCHED_GETCPU) || defined(_WIN32)
+#if defined(__aarch64__) && defined(UNIV_LINUX)
+# define default_indexer_t	get_rand_indexer_t
+#elif defined(HAVE_SCHED_GETCPU) || defined(_WIN32)
 # define default_indexer_t	get_sched_indexer_t
 #else
 # define default_indexer_t	counter_indexer_t
