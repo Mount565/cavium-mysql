@@ -104,6 +104,8 @@ struct get_sched_indexer_t : public generic_indexer_t<Type, N> {
 };
 #endif /* HAVE_SCHED_GETCPU */
 
+#ifndef UNIV_INNOCHECKSUM
+
 /** Use the random number to index into the counter array. */
 template <typename Type=ulint, int N=1>
 struct get_rand_indexer_t : public generic_indexer_t<Type, N> {
@@ -116,9 +118,11 @@ struct get_rand_indexer_t : public generic_indexer_t<Type, N> {
 
 		ulint	idx = ut_rnd_gen_ulint();
 
-		return(size_t(idx));
+		return(static_cast<size_t>(idx));
 	}
 };
+
+#endif /* !UNIV_INNOCHECKSUM */
 
 /** Use the result of my_timer_cycles(), which mainly uses RDTSC for cycles,
 to index into the counter array. See the comments for my_timer_cycles() */
@@ -173,7 +177,7 @@ struct single_indexer_t {
 	}
 };
 
-#if defined(__aarch64__) && defined(UNIV_LINUX)
+#if defined(__aarch64__) && defined(UNIV_LINUX) && !defined(UNIV_INNOCHECKSUM)
 # define default_indexer_t	get_rand_indexer_t
 #elif defined(HAVE_SCHED_GETCPU) || defined(_WIN32)
 # define default_indexer_t	get_sched_indexer_t
