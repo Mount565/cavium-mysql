@@ -1,3 +1,17 @@
+mysql-5.7 (5.7.17-1ubuntu16.04) UNRELEASED; urgency=low
+
+  * Applied Cavium patches (commit bc7c883)
+    - added ability to use non-native toolchain
+  * Updated to 5.7.17
+    - added connection_control.so plugin
+    - added keyring_udf.so plugin
+    - added mysqlx.so plugin with corresponding mysqlxtest
+    - fixed libmysqlclient.so broken links
+  * Fixed numerous lintian errors and warnings
+  * Added mysqld.cnf file
+
+ -- Konstantin Chaplaev <chaplaev@gmail.com>  Thu, 30 Mar 2017 04:33:35 -0700
+
 mysql-5.7 (5.7.15-0ubuntu0.16.04.2) UNRELEASED; urgency=medium
 
   * Applied Cavium patches (commit 270fd34)
@@ -89,6 +103,42 @@ mysql-5.7 (5.7.12-0ubuntu1) xenial-security; urgency=medium
   * Add NEWS entry missed from my previous upload.
 
  -- Robie Basak <robie.basak@ubuntu.com>  Thu, 21 Apr 2016 12:05:40 +0100
+
+mysql-5.7 (5.7.12-1~exp1) UNRELEASED; urgency=medium
+
+  * Password behaviour when the MySQL root password is empty has
+    changed. Packaging now enables socket authentication when the MySQL
+    root password is empty. This means that a non-root user can't log in
+    as the MySQL root user with an empty password. The new logic is as
+    follows:
+
+    - The auth_socket plugin will be installed automatically only if it
+      is to be activated for the root user.
+
+    - The auth_socket plugin will be activated for the root user:
+
+      + If you had a database before with an empty root password.
+
+      + If you create a new database with an empty root password.
+
+    - The auth_socket plugin will NOT be activated for the root user:
+
+      + If you had a database before with a root password set.
+
+      + If you create a new database with a root password set.
+
+    - The auth_socket plugin will NOT be activated for any other user.
+
+    - If you do not want the new behaviour, set the MySQL root password
+      to be non-empty.
+
+  * The MySQL server now uses strict mode by default. See
+    http://dev.mysql.com/doc/refman/5.7/en/sql-mode.html#sql-mode-strict
+    for details. See
+    http://dev.mysql.com/doc/refman/5.6/en/sql-mode.html#sql-mode-setting
+    for details about the default settings in older versions.
+
+ -- Robie Basak <robie.basak@ubuntu.com>  Wed, 20 Apr 2016 11:05:18 +0100
 
 mysql-5.7 (5.7.11-0ubuntu6) xenial; urgency=medium
 

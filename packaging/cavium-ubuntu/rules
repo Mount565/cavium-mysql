@@ -34,8 +34,6 @@ endif
 
 MAKEFLAGS += -j $(NUMJOBS)
 
-export MYSQL_BUILD_CC=$(DEB_HOST_GNU_TYPE)-gcc
-export MYSQL_BUILD_CXX=$(DEB_HOST_GNU_TYPE)-g++
 
 # The full upstream test suite takes a very long time to run, so we run
 # only the main test suite unless fulltest is specified.
@@ -65,7 +63,10 @@ configure-stamp:
 	sh -c  'PATH=$${MYSQL_BUILD_PATH:-"/bin:/usr/bin"} \
 		CC=$${MYSQL_BUILD_CC:-gcc} \
 		CXX=$${MYSQL_BUILD_CXX:-g++} \
+		LD_LIBRARY_PATH=$${MYSQL_LD_LIBRARRY_PATH:-""} \
 		cmake -DCMAKE_INSTALL_PREFIX=/usr \
+		-DCMAKE_C_FLAGS=$${MYSQL_CMAKE_C_FLAGS:-""} \
+		-DCMAKE_CXX_FLAGS=$${MYSQL_CMAKE_CXX_FLAGS:-""} \
 		-DCMAKE_VERBOSE_MAKEFILE=ON \
 		-DMYSQL_UNIX_ADDR=/var/run/mysqld/mysqld.sock \
 		-DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -77,7 +78,7 @@ configure-stamp:
 		-DWITH_SSL=bundled \
                 -DENABLE_DOWNLOADS=1 \
                 -DDOWNLOAD_BOOST=1 \
-		-DWITH_BOOST=boost \
+		-DWITH_BOOST=/tmp/boost \
 		-DCOMPILATION_COMMENT="($(DISTRIBUTION))" \
 		-DMYSQL_SERVER_SUFFIX="-$(DEBVERSION)" \
 		-DINSTALL_LAYOUT=DEB \
@@ -94,6 +95,8 @@ configure-stamp:
 		-DINSTALL_SCRIPTDIR=bin \
 		-DINSTALL_SUPPORTFILESDIR=share/mysql \
 		-DSYSCONFDIR=/etc/mysql \
+		$(MYSQL_CMAKE_FLAGS) \
+		-DWITH_NUMA=ON \
 		-DWITH_EMBEDDED_SERVER=ON \
 		-DWITH_ARCHIVE_STORAGE_ENGINE=ON \
 		-DWITH_BLACKHOLE_STORAGE_ENGINE=ON \
@@ -179,11 +182,12 @@ override_dh_installlogrotate-arch:
 override_dh_install:
 	dh_install --list-missing		\
 		-Xusr/share/man			\
-		-Xusr/share/mysql/mysql.server
-	dh_apparmor -pmysql-server-5.7 --profile-name=usr.sbin.mysqld
+		-Xusr/share/mysql/mysql.server	\
+		-Xusr/share/mysql/COPYING	\
+		-Xusr/share/mysql/README	\
+		-Xusr/share/mysql/docs/mysql.info
 
-override_dh_installchangelogs:
-	dh_installchangelogs Docs/ChangeLog
+	dh_apparmor -pmysql-server-5.7 --profile-name=usr.sbin.mysqld
 
 override_dh_systemd_enable:
 	dh_systemd_enable --name=mysql
