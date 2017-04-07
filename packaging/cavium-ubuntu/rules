@@ -107,16 +107,9 @@ configure-stamp:
 
 override_dh_auto_build: build-stamp
 
-# $(EXPORTED_SOURCE_TARBALL) must be built before the builds commence, since
-# the builds change some of the files picked up by this tar invocation, and
-# this can race against tar with an error like "tar:
-# ./builddir-pic/strings/CMakeFiles/strings.dir: file changed as we read it".
-# So define the rule for building it here, and have the build rules depend on
-# it.
+# Use git archive command as we use the sources from the git repository anyway.
 $(EXPORTED_SOURCE_TARBALL):
-	GZIP=-n tar -zcf $(EXPORTED_SOURCE_TARBALL) \
-	    --exclude=debian . \
-	    --transform="s,^\./,mysql-5.7/,"
+	git archive --format=tar.gz -o $(EXPORTED_SOURCE_TARBALL) HEAD
 
 build-stamp: $(EXPORTED_SOURCE_TARBALL)
 	@echo "RULES.$@"
@@ -171,6 +164,8 @@ auto_install-stamp:
 	chmod 0644 $(TMP)/usr/lib/mysql-test/suite/innodb/t/alter_rename_existing.test
 	chmod 0644 $(TMP)/usr/lib/mysql-test/suite/innodb/r/alter_rename_existing.result
 	chmod 0644 $(TMP)/usr/share/mysql/mysql-log-rotate
+	# Fix script-not-executable usr/lib/mysql-test/suite/sysschema/t/fn_format_path-master.sh
+	chmod 0755 $(TMP)/usr/lib/mysql-test/suite/sysschema/t/fn_format_path-master.sh
 	# install AppArmor profile
 	install -D -m 644 debian/additions/apparmor-profile $(TMP)/etc/apparmor.d/usr.sbin.mysqld
 	touch $@
