@@ -644,7 +644,7 @@ fi
   pushd mysql-server-mysql-%{compatver}
   mkdir build && pushd build
   # Adding LSE and thunderx cpu support
-  optflags="${optflags} -mcpu=thunderx+lse"
+  optflags="%{optflags} -mcpu=thunderx+lse"
   # Workaround for cases when GCC being used is newer than the native one
   LDFLAGS="-static-libstdc++" \
   CC="/opt/cavium/bin/gcc" \
@@ -654,8 +654,9 @@ fi
     -DBUILD_CONFIG=mysql_release \
     -DINSTALL_LAYOUT=RPM \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-    -DCMAKE_C_FLAGS="%{optflags}" \
-    -DCMAKE_CXX_FLAGS="%{optflags}" \
+    -DCMAKE_C_FLAGS="${optflags}" \
+    -DCMAKE_CXX_FLAGS="${optflags}" \
+    -DWITH_LSE=ON \
     -DWITH_INNODB_MEMCACHED=0 \
     -DINSTALL_LIBDIR="%{_lib}/mysql" \
     -DINSTALL_PLUGINDIR="%{_lib}/mysql/plugin" \
@@ -728,7 +729,7 @@ mkdir release
 (
   cd release
   # Adding LSE and thunderx cpu support
-  optflags="${optflags} -mcpu=thunderx+lse"
+  optflags="%{optflags} -mcpu=thunderx+lse"
   # Workaround for cases when GCC being used is newer than the native one
   LDFLAGS="-static-libstdc++" \
   CC="/opt/cavium/bin/gcc" \
