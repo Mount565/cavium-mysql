@@ -60,11 +60,8 @@
 %if 0%{?rhel} == 7
 %global compatver             5.6.31
 %global compatlib             18
-%global compatsrc             https://cdn.mysql.com/Downloads/MySQL-5.6/mysql-%{compatver}.tar.gz
+%global compatsrc             https://github.com/mysql/mysql-server/archive/mysql-%{compatver}.tar.gz
 %endif
-
-# No compatlibs for now
-%global compatlib %{nil}
 
 # multiarch
 %global multiarchs            ppc %{power64} %{ix86} x86_64 %{sparc} aarch64
@@ -644,10 +641,15 @@ fi
 )
 %else  # 0%{?rhel} < 7
 (
-  pushd mysql-%{compatver}
+  pushd mysql-server-mysql-%{compatver}
   mkdir build && pushd build
+  # Adding LSE and thunderx cpu support
+  optflags="${optflags} -mcpu=thunderx+lse"
   # Workaround for cases when GCC being used is newer than the native one
   LDFLAGS="-static-libstdc++" \
+  CC="/opt/cavium/bin/gcc" \
+  CXX="/opt/cavium/bin/g++" \
+  LD_LIBRARY_PATH="/opt/cavium/lib:/opt/cavium/lib64" \
   cmake .. \
     -DBUILD_CONFIG=mysql_release \
     -DINSTALL_LAYOUT=RPM \
@@ -770,7 +772,7 @@ mkdir release
 dirs="libmysql libmysql_r"
 %{?el7:dirs="build/libmysql build/libmysqld"}
 for dir in $dirs ; do
-    pushd mysql-%{compatver}/$dir
+    pushd mysql-server-mysql-%{compatver}/$dir
     make DESTDIR=%{buildroot} install
     popd
 done
@@ -1284,7 +1286,7 @@ fi
 %doc %{?license_files_server}
 %dir %attr(755, root, root) %{_libdir}/mysql
 %attr(644, root, root) %{_sysconfdir}/ld.so.conf.d/mysql-%{_arch}.conf
-#%attr(755, root, root) %{_libdir}/mysql/libmysqld.so.18*
+%attr(755, root, root) %{_libdir}/mysql/libmysqld.so.18*
 %endif
 
 %files embedded-devel
