@@ -89,10 +89,10 @@
 %endif
 
 %if 0%{?commercial}
-%global license_files_server  ./LICENSE.mysql
+%global license_files_server  %{src_dir}/LICENSE.mysql
 %global license_type          Commercial
 %else
-%global license_files_server  ./COPYING ./README
+%global license_files_server  %{src_dir}/COPYING %{src_dir}/README
 %global license_type          GPLv2
 %endif
 
@@ -689,7 +689,7 @@ mkdir debug
   CC="/opt/cavium/bin/gcc" \
   CXX="/opt/cavium/bin/g++" \
   LD_LIBRARY_PATH="/opt/cavium/lib:/opt/cavium/lib64" \
-  cmake%{?el5:28}%{?el6:28} .. \
+  cmake%{?el5:28}%{?el6:28} ../%{src_dir} \
            -DBUILD_CONFIG=mysql_release \
            -DINSTALL_LAYOUT=RPM \
            -DCMAKE_BUILD_TYPE=Debug \
@@ -732,7 +732,7 @@ mkdir release
   CC="/opt/cavium/bin/gcc" \
   CXX="/opt/cavium/bin/g++" \
   LD_LIBRARY_PATH="/opt/cavium/lib:/opt/cavium/lib64" \
-  cmake%{?el5:28}%{?el6:28} .. \
+  cmake%{?el5:28}%{?el6:28} ../%{src_dir} \
            -DBUILD_CONFIG=mysql_release \
            -DINSTALL_LAYOUT=RPM \
            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -778,9 +778,7 @@ rm -f %{buildroot}%{_libdir}/mysql/libmysqlclient{,_r}.{a,la,so}
 %{?el7:rm -f %{buildroot}%{_libdir}/mysql/libmysqld.{a,la,so}}
 %endif # 0%{?compatlib}
 
-# %{src_dir} does not work under packpack/docker
-#MBD=$RPM_BUILD_DIR/%{src_dir}
-MBD=`pwd`
+MBD=$RPM_BUILD_DIR/%{src_dir}
 
 # Ensure that needed directories exists
 install -d -m 0751 %{buildroot}/var/lib/mysql
