@@ -86,10 +86,10 @@
 %endif
 
 %if 0%{?commercial}
-%global license_files_server  %{src_dir}/LICENSE.mysql
+%global license_files_server  LICENSE.mysql
 %global license_type          Commercial
 %else
-%global license_files_server  %{src_dir}/COPYING %{src_dir}/README
+%global license_files_server  COPYING README
 %global license_type          GPLv2
 %endif
 
@@ -582,10 +582,9 @@ to provide a persistent MySQL Cluster data store.
 %endif # cluster
 
 %prep
+%setup -q -n %{src_dir}
 %if 0%{?compatlib}
-%setup -q -T -a 0 -a 7 -a 10 -c -n %{src_dir}
-%else
-%setup -q -T -a 0 -a 10 -c -n %{src_dir}
+%setup -q -T -D -a 7 -n %{src_dir}
 %endif # 0%{?compatlib}
 
 %build
@@ -692,7 +691,7 @@ mkdir debug
   CC="/opt/cavium/bin/gcc" \
   CXX="/opt/cavium/bin/g++" \
   LD_LIBRARY_PATH="/opt/cavium/lib:/opt/cavium/lib64" \
-  cmake%{?el5:28}%{?el6:28} ../%{src_dir} \
+  cmake%{?el5:28}%{?el6:28} .. \
            -DBUILD_CONFIG=mysql_release \
            -DINSTALL_LAYOUT=RPM \
            -DCMAKE_BUILD_TYPE=Debug \
@@ -735,7 +734,7 @@ mkdir release
   CC="/opt/cavium/bin/gcc" \
   CXX="/opt/cavium/bin/g++" \
   LD_LIBRARY_PATH="/opt/cavium/lib:/opt/cavium/lib64" \
-  cmake%{?el5:28}%{?el6:28} ../%{src_dir} \
+  cmake%{?el5:28}%{?el6:28} .. \
            -DBUILD_CONFIG=mysql_release \
            -DINSTALL_LAYOUT=RPM \
            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -1287,7 +1286,9 @@ fi
 %doc %{?license_files_server}
 %dir %attr(755, root, root) %{_libdir}/mysql
 %attr(644, root, root) %{_sysconfdir}/ld.so.conf.d/mysql-%{_arch}.conf
+%if 0%{?compatlib}
 %attr(755, root, root) %{_libdir}/mysql/libmysqld.so.18*
+%endif
 %endif
 
 %files embedded-devel
