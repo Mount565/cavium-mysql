@@ -9,4 +9,5 @@ usr/include/mysql/mysql/psi/psi_memory.h usr/include/mysql/psi
 usr/lib/*/libmysqlclient.a
 usr/lib/*/libmysqlclient.so
 usr/lib/*/pkgconfig/mysqlclient.pc
+#usr/share/man/man1/mysql_config.1
 usr/share/aclocal/mysql.m4
