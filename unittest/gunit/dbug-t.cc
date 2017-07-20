@@ -74,14 +74,14 @@ TEST(DebugFlushGcov, FlushGcovParallel)
 #endif
 
 
-#if !defined(DBUG_OFF) && !defined(HAVE_ASAN)
+#if !defined(DBUG_OFF)
 TEST(DebugPrintTest, PrintEval)
 {
   int y= 0;
 
   // This DBUG_PRINT args should never be evaluated.
-  DBUG_PRINT("never",("%d",y+=1));
-  EXPECT_TRUE((y == 0)) << "DBUG_PRINT arg is evaluated.";
+  DBUG_PRINT("never",("%d", y+= 1));
+  EXPECT_EQ(y, 0) << "DBUG_PRINT arg is evaluated.";
 }
 
 
@@ -90,9 +90,9 @@ TEST(DebugPrintEvalTest, PrintEval)
   int y= 0;
 
   DBUG_SET("+d,never");
-  DBUG_PRINT("never",("%d",y+=1));
+  DBUG_PRINT("never",("%d", y+= 1));
   DBUG_SET("");
-  EXPECT_TRUE((y >= 1)) << "DBUG_PRINT arg is not evaluated.";
+  EXPECT_GE(y, 1) << "DBUG_PRINT arg is not evaluated.";
 }
 
 
