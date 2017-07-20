@@ -1,6 +1,6 @@
 /*****************************************************************************
 
-Copyright (c) 1995, 2016, Oracle and/or its affiliates. All Rights Reserved.
+Copyright (c) 1995, 2017, Oracle and/or its affiliates. All Rights Reserved.
 Copyright (c) 2008, 2009 Google Inc.
 Copyright (c) 2009, Percona Inc.
 
@@ -2329,6 +2329,8 @@ DECLARE_THREAD(srv_master_thread)(
 			/*!< in: a dummy parameter required by
 			os_thread_create */
 {
+	my_thread_init();
+
 	srv_slot_t*	slot;
 	ulint		old_activity_count = srv_get_activity_count();
 	ib_time_t	last_print_time;
@@ -2390,6 +2392,7 @@ suspend_thread:
 	os_event_wait(slot->event);
 
 	if (srv_shutdown_state == SRV_SHUTDOWN_EXIT_THREADS) {
+		my_thread_end();
 		os_thread_exit(NULL);
 	}
 
@@ -2472,6 +2475,8 @@ DECLARE_THREAD(srv_worker_thread)(
 	void*	arg MY_ATTRIBUTE((unused)))	/*!< in: a dummy parameter
 						required by os_thread_create */
 {
+	my_thread_init();
+
 	srv_slot_t*	slot;
 
 	ut_ad(!srv_read_only_mode);
@@ -2530,6 +2535,7 @@ DECLARE_THREAD(srv_worker_thread)(
 		os_thread_pf(os_thread_get_curr_id()));
 #endif /* UNIV_DEBUG_THREAD_CREATION */
 
+	my_thread_end();
 	/* We count the number of threads in os_thread_exit(). A created
 	thread should always use that to exit and not use return() to exit. */
 	os_thread_exit(NULL);
@@ -2730,6 +2736,8 @@ DECLARE_THREAD(srv_purge_coordinator_thread)(
 	void*	arg MY_ATTRIBUTE((unused)))	/*!< in: a dummy parameter
 						required by os_thread_create */
 {
+	my_thread_init();
+
 	srv_slot_t*	slot;
 	ulint           n_total_purged = ULINT_UNDEFINED;
 
@@ -2835,6 +2843,7 @@ DECLARE_THREAD(srv_purge_coordinator_thread)(
 		srv_release_threads(SRV_WORKER, srv_n_purge_threads - 1);
 	}
 
+	my_thread_end();
 	/* We count the number of threads in os_thread_exit(). A created
 	thread should always use that to exit and not use return() to exit. */
 	os_thread_exit(NULL);
@@ -2903,3 +2912,18 @@ srv_purge_wakeup(void)
 	}
 }
 
+/** Check whether given space id is undo tablespace id
+@param[in]	space_id	space id to check
+@return true if it is undo tablespace else false. */
+bool
+srv_is_undo_tablespace(
+	ulint	space_id)
+{
+	if (srv_undo_space_id_start == 0) {
+		return (false);
+	}
+
+	return(space_id >= srv_undo_space_id_start
+	       && space_id < (srv_undo_space_id_start
+			      + srv_undo_tablespaces_open));
+}
