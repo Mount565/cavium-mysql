@@ -30,13 +30,8 @@ Created 2012/04/12 by Sunny Bains
 #include <my_rdtsc.h>
 #include "univ.i"
 #include "os0thread.h"
-
-/** CPU cache line size */
-#ifdef __powerpc__
-#define CACHE_LINE_SIZE		128
-#else
-#define CACHE_LINE_SIZE		64
-#endif /* __powerpc__ */
+#include "ut0rnd.h"
+#include "os0atomic.h"
 
 /** Default number of slots to use in ib_counter_t */
 #define IB_N_SLOTS		64
@@ -52,6 +47,72 @@ struct generic_indexer_t {
                 return(((index % N) + 1) * (CACHE_LINE_SIZE / sizeof(Type)));
         }
 };
+
+#ifdef HAVE_SCHED_GETCPU
+#include <sched.h>
+/** Use the cpu id to index into the counter array. If it fails then
+use the thread id. */
+template <typename Type=ulint, int N=1>
+struct get_sched_indexer_t : public generic_indexer_t<Type, N> {
+	/** Default constructor/destructor should be OK. */
+
+	enum { fast = 1 };
+
+	/* @return result from sched_getcpu(), the thread id if it fails. */
+	static size_t get_rnd_index() UNIV_NOTHROW {
+
+		int	cpu = sched_getcpu();
+
+		if (cpu == -1) {
+			cpu = (int) os_thread_get_curr_id();
+		}
+
+		return(size_t(cpu));
+	}
+};
+#elif defined(_WIN32)
+template <typename Type=ulint, int N=1>
+struct get_sched_indexer_t : public generic_indexer_t<Type, N> {
+ 	/** Default constructor/destructor should be OK. */
+
+	enum { fast = 1 };
+
+	/* @return result from GetCurrentProcessorNumber (). */
+	static size_t get_rnd_index() UNIV_NOTHROW {
+
+		/* According to the Windows documentation, it returns the
+		processor number within the Processor group if the host
+		has more than 64 logical CPUs. We ignore that here. If the
+		processor number from a different group maps to the same
+		slot that is acceptable. We want to avoid making another
+		system call to determine the processor group. If this becomes
+		an issue, the fix is to multiply the group with the processor
+		number and use that, also note that the number of slots should
+		be increased to avoid overlap. */
+		return(size_t(GetCurrentProcessorNumber()));
+	}
+};
+#endif /* HAVE_SCHED_GETCPU */
+
+#ifndef UNIV_INNOCHECKSUM
+
+/** Use the random number to index into the counter array. */
+template <typename Type=ulint, int N=1>
+struct get_rand_indexer_t : public generic_indexer_t<Type, N> {
+	/** Default constructor/destructor should be OK. */
+
+	enum { fast = 1 };
+
+	/* @return result from ut_rnd_gen_ulint(). */
+	static size_t get_rnd_index() UNIV_NOTHROW {
+
+		ulint	idx = ut_rnd_gen_ulint();
+
+		return(static_cast<size_t>(idx));
+	}
+};
+
+#endif /* !UNIV_INNOCHECKSUM */
 
 /** Use the result of my_timer_cycles(), which mainly uses RDTSC for cycles,
 to index into the counter array. See the comments for my_timer_cycles() */
@@ -106,7 +167,45 @@ struct single_indexer_t {
 	}
 };
 
-#define	default_indexer_t	counter_indexer_t
+#if defined(__aarch64__) && defined(UNIV_LINUX) && !defined(UNIV_INNOCHECKSUM)
+# define default_indexer_t	get_rand_indexer_t
+#elif defined(HAVE_SCHED_GETCPU) || defined(_WIN32)
+# define default_indexer_t	get_sched_indexer_t
+#else
+# define default_indexer_t	counter_indexer_t
+#endif
+
+
+template <typename T>
+UNIV_INLINE void add_noreturn(T &val, T n) {
+	val += n;
+}
+
+template <typename T>
+UNIV_INLINE void sub_noreturn(T &val, T n) {
+	val -= n;
+}
+
+/* Template specializations for native word size */
+template <>
+inline void add_noreturn<ulint>(ulint &val, ulint n) {
+	os_nonatomic_increment_ulint_nr(&val, n);
+}
+
+template <>
+inline void sub_noreturn<ulint>(ulint &val, ulint n) {
+	os_nonatomic_decrement_lint_nr(&val, n);
+}
+
+template <>
+inline void add_noreturn<lint>(lint &val, lint n) {
+	os_nonatomic_increment_lint_nr(&val, n);
+}
+
+template <>
+inline void sub_noreturn<lint>(lint &val, lint n) {
+	os_nonatomic_decrement_lint_nr(&val, n);
+}
 
 /** Class for using fuzzy counters. The counter is not protected by any
 mutex and the results are not guaranteed to be 100% accurate but close
@@ -151,7 +250,7 @@ public:
 
 		ut_ad(i < UT_ARR_SIZE(m_counter));
 
-		m_counter[i] += n;
+		add_noreturn(m_counter[i], n);
 	}
 
 	/** Use this if you can use a unique identifier, saves a
@@ -163,7 +262,7 @@ public:
 
 		ut_ad(i < UT_ARR_SIZE(m_counter));
 
-		m_counter[i] += n;
+		add_noreturn(m_counter[i], n);
 	}
 
 	/** If you can't use a good index id. Decrement by 1. */
@@ -176,7 +275,7 @@ public:
 
 		ut_ad(i < UT_ARR_SIZE(m_counter));
 
-		m_counter[i] -= n;
+		sub_noreturn(m_counter[i], n);
 	}
 
 	/** Use this if you can use a unique identifier, saves a
@@ -188,7 +287,7 @@ public:
 
 		ut_ad(i < UT_ARR_SIZE(m_counter));
 
-		m_counter[i] -= n;
+		sub_noreturn(m_counter[i], n);
 	}
 
 	/* @return total value - not 100% accurate, since it is not atomic. */

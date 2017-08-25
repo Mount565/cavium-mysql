@@ -24,6 +24,7 @@ Created 5/11/1994 Heikki Tuuri
 ********************************************************************/
 
 #include "ut0rnd.h"
+#include <my_thread_local.h>
 
 /** These random numbers are used in ut_find_prime */
 /*@{*/

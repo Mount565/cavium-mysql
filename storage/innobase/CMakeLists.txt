@@ -205,19 +205,12 @@ IF(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 ENDIF()
 
 # A GCC bug causes crash when compiling these files on ARM64 with -O1+
-# Compile them with -O0 as a workaround.
+# Unlike upstream MySQL, we simply require GCC >= 5.2 rather than build with -O0
 IF(CMAKE_COMPILER_IS_GNUCXX AND CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
-  # Bug was fixed in GCC 5.2, so workaround only needed < 5.2
   EXECUTE_PROCESS(COMMAND ${CMAKE_C_COMPILER} -dumpversion
                   OUTPUT_VARIABLE GCC_VERSION)
   IF(GCC_VERSION VERSION_LESS 5.2)
-    INCLUDE(${MYSQL_CMAKE_SCRIPT_DIR}/compile_flags.cmake)
-    ADD_COMPILE_FLAGS(
-      btr/btr0btr.cc
-      btr/btr0cur.cc
-      buf/buf0buf.cc
-      gis/gis0sea.cc
-      COMPILE_FLAGS "-O0"
-      )
+    MESSAGE(FATAL_ERROR
+      "GCC 5.2 or newer is required to build InnoDB on AArch64!")
   ENDIF()
 ENDIF()

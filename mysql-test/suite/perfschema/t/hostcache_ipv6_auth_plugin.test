@@ -12,6 +12,13 @@
 --source include/have_ipv6.inc
 --source include/have_plugin_auth.inc
 
+call mtr.add_suppression("Function 'test_plugin_server' already exists");
+call mtr.add_suppression("Couldn't load plugin named 'test_plugin_server'");
+
+# Start the server with --bind-address=::
+--let $restart_parameters = "restart: --bind-address=::"
+--source include/restart_mysqld.inc
+
 # Enforce a clean state
 --source ../include/wait_for_pfs_thread_count.inc
 --source ../include/hostcache_set_state.inc

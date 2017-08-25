@@ -63,7 +63,7 @@ ulint		btr_search_n_hash_fail	= 0;
 /** padding to prevent other memory update
 hotspots from residing on the same memory
 cache line as btr_search_latches */
-byte		btr_sea_pad1[64];
+byte		btr_sea_pad1[CACHE_LINE_SIZE];
 
 /** The latches protecting the adaptive search system: this latches protects the
 (1) positions of records on those pages where a hash index has been built.
@@ -75,7 +75,7 @@ rw_lock_t**	btr_search_latches;
 
 /** padding to prevent other memory update hotspots from residing on
 the same memory cache line */
-byte		btr_sea_pad2[64];
+byte		btr_sea_pad2[CACHE_LINE_SIZE];
 
 /** The adaptive hash index */
 btr_search_sys_t*	btr_search_sys;
@@ -1225,9 +1225,7 @@ retry:
 	const space_index_t	index_id
 		= btr_page_get_index_id(block->frame);
 	const ulint		ahi_slot
-		= ut_fold_ulint_pair(static_cast<ulint>(index_id),
-				     static_cast<ulint>(block->page.id.space()))
-		% btr_ahi_parts;
+		= static_cast<ulint>(index_id) % btr_ahi_parts;
 	latch = btr_search_latches[ahi_slot];
 
 	ut_ad(!btr_search_own_any(RW_LOCK_S));

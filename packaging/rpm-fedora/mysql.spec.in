@@ -321,6 +321,8 @@ fi
 (
   pushd mysql-%{compatver}
   mkdir build && pushd build
+  # Workaround for cases when GCC being used is newer than the native one
+  LDFLAGS="-static-libstdc++" \
   cmake .. \
            -DBUILD_CONFIG=mysql_release \
            -DINSTALL_LAYOUT=RPM \
@@ -349,6 +351,8 @@ mkdir debug
   cd debug
   # Attempt to remove any optimisation flags from the debug build
   optflags=$(echo "%{optflags}" | sed -e 's/-O2 / /' -e 's/-Wp,-D_FORTIFY_SOURCE=2/ /')
+  # Workaround for cases when GCC being used is newer than the native one
+  LDFLAGS="-static-libstdc++" \
   cmake ../%{src_dir} \
            -DBUILD_CONFIG=mysql_release \
            -DINSTALL_LAYOUT=RPM \
@@ -384,6 +388,8 @@ mkdir debug
 mkdir release
 (
   cd release
+  # Workaround for cases when GCC being used is newer than the native one
+  LDFLAGS="-static-libstdc++" \
   cmake ../%{src_dir} \
            -DBUILD_CONFIG=mysql_release \
            -DINSTALL_LAYOUT=RPM \
@@ -849,8 +855,13 @@ datadir=$(/usr/bin/my_print_defaults server mysqld | grep '^--datadir=' | sed -n
 * Thu May 11 2017 Horst Hunger <horst.hunger@oracle.com> - 8.0.2-0.1
 - Add UDF components
 
+* Fri Oct 21 2016 Aleksei Kopytov <akopytov@gmail.com> - 5.7.15-1
+- Initial Cavium release with AArch64-specific fixes.
+
 * Tue Sep 13 2016 Balasubramanian Kandasamy <balasubramanian.kandasamy@oracle.com> - 8.0.1-0.1
 - Add test_services_plugin_registry.so plugin
+
+* Tue Sep 13 2016 Balasubramanian Kandasamy <balasubramanian.kandasamy@oracle.com> - 5.7.16-1
 - Add connection_control.so to server subpackage
 
 * Tue Jul 05 2016 Erlend Dahl <erlend.dahl@oracle.com> - 8.0.0-0.1

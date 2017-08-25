@@ -31,7 +31,6 @@ Created 9/5/1995 Heikki Tuuri
 
 #include "univ.i"
 #include "ut0new.h"
-#include "ut0counter.h"
 #include "sync0sync.h"
 
 #ifdef UNIV_DEBUG

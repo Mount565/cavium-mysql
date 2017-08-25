@@ -26,6 +26,7 @@
 #include "my_dbug.h"
 #include "my_inttypes.h"
 #include "sql_class.h"
+#include "my_cache_line.h"
 
 /**
   @file storage/perfschema/pfs_global.h
@@ -37,8 +38,8 @@ extern bool pfs_initialized;
 
 #if defined(HAVE_POSIX_MEMALIGN) || defined(HAVE_MEMALIGN) || \
   defined(HAVE_ALIGNED_MALLOC)
-#define PFS_ALIGNEMENT 64
-#define PFS_ALIGNED MY_ALIGNED(PFS_ALIGNEMENT)
+#define PFS_ALIGNEMENT MY_CACHE_LINE_SIZE
+#define PFS_ALIGNED MY_CACHE_LINE_ALIGNED
 #else
 /*
   Known platforms that do not provide aligned memory:
@@ -48,11 +49,7 @@ extern bool pfs_initialized;
 #define PFS_ALIGNED
 #endif /* HAVE_POSIX_MEMALIGN || HAVE_MEMALIGN || HAVE_ALIGNED_MALLOC */
 
-#ifdef CPU_LEVEL1_DCACHE_LINESIZE
-#define PFS_CACHE_LINE_SIZE CPU_LEVEL1_DCACHE_LINESIZE
-#else
-#define PFS_CACHE_LINE_SIZE 128
-#endif
+#define PFS_CACHE_LINE_SIZE MY_CACHE_LINE_SIZE
 
 /**
   An atomic @c uint32 variable, guaranteed to be alone in a CPU cache line.

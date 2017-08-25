@@ -90,6 +90,7 @@ support cross-platform development and expose comonly used SQL names. */
 # include <m_string.h>
 # include <my_thread.h>
 # include <mysqld_error.h>
+# include <my_cache_line.h>
 #endif /* !UNIV_HOTBACKUP  */
 
 /* Include <sys/stat.h> to get S_I... macros defined for os0file.cc */
@@ -570,6 +571,11 @@ typedef void* os_thread_ret_t;
 # define OS_PATH_SEPARATOR		'/'
 # define OS_PATH_SEPARATOR_ALT		'\\'
 #endif /* _WIN32 */
+
+/** CPU cache line size */
+#ifndef UNIV_HOTBACKUP
+# define CACHE_LINE_SIZE MY_CACHE_LINE_SIZE
+#endif /* UNIV_HOTBACKUP */
 
 #include <stdio.h>
 
