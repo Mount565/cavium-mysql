@@ -76,7 +76,7 @@
    */
 #  define MY_PAUSE() __asm__ __volatile__ ("pause")
 # elif defined(HAVE_FAKE_PAUSE_INSTRUCTION)
-#  define UT_PAUSE() __asm__ __volatile__ ("rep; nop")
+#  define MY_PAUSE() __asm__ __volatile__ ("rep; nop")
 # elif defined(_MSC_VER)
    /*
       In the Win32 API, the x86 PAUSE instruction is executed by calling the
