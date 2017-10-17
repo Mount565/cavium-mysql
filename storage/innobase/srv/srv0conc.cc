@@ -66,7 +66,7 @@ ulong	srv_thread_concurrency	= 0;
 
 /** Variables tracking the active and waiting threads. */
 struct srv_conc_t {
-	char		pad1[CACHE_LINE_SIZE  - sizeof(ulint)];
+	char		pad1[INNOBASE_CACHE_LINE_SIZE  - sizeof(ulint)];
 
 	/** Number of transactions that have declared_to_be_inside_innodb set.
 	It used to be a non-error for this value to drop below zero temporarily.
@@ -75,7 +75,7 @@ struct srv_conc_t {
 
 	volatile lint	n_active;
 
-	char		pad2[CACHE_LINE_SIZE  - sizeof(lint)];
+	char		pad2[INNOBASE_CACHE_LINE_SIZE  - sizeof(lint)];
 
 	/** Number of OS threads waiting in the FIFO for permission to
 	enter InnoDB */

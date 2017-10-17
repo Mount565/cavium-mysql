@@ -63,7 +63,7 @@ ulint		btr_search_n_hash_fail	= 0;
 /** padding to prevent other memory update
 hotspots from residing on the same memory
 cache line as btr_search_latches */
-byte		btr_sea_pad1[CACHE_LINE_SIZE];
+byte		btr_sea_pad1[INNOBASE_CACHE_LINE_SIZE];
 
 /** The latches protecting the adaptive search system: this latches protects the
 (1) positions of records on those pages where a hash index has been built.
@@ -75,7 +75,7 @@ rw_lock_t**	btr_search_latches;
 
 /** padding to prevent other memory update hotspots from residing on
 the same memory cache line */
-byte		btr_sea_pad2[CACHE_LINE_SIZE];
+byte		btr_sea_pad2[INNOBASE_CACHE_LINE_SIZE];
 
 /** The adaptive hash index */
 btr_search_sys_t*	btr_search_sys;
@@ -1431,7 +1431,7 @@ btr_drop_ahi_for_table(dict_table_t* table)
 	const ulint     len = UT_LIST_GET_LEN(table->indexes);
 
 	if (len == 0) {
-	return;
+		return;
 	}
 
 	const dict_index_t*	indexes[MAX_INDEXES];
@@ -1477,7 +1477,8 @@ btr_drop_ahi_for_table(dict_table_t* table)
 
 				if (buf_page_get_state(bpage)
 				    != BUF_BLOCK_FILE_PAGE
-				    || bpage->io_fix != BUF_IO_NONE
+				    || (bpage->io_fix != BUF_IO_NONE
+					&& bpage->io_fix != BUF_IO_WRITE)
 				    || bpage->buf_fix_count > 0) {
 					continue;
 				}
@@ -1505,6 +1506,78 @@ btr_drop_ahi_for_table(dict_table_t* table)
 					drop[i], page_size);
 			}
 		}
+
+		os_thread_yield();
+	}
+}
+
+/** Drop any adaptive hash index entries for a index.
+@param[in,out]	index	to drop hash indexes for this index */
+void
+btr_drop_ahi_for_index(dict_index_t* index)
+{
+	ut_ad(index->is_committed());
+
+	if (index->disable_ahi || index->search_info->ref_count == 0) {
+		return;
+	}
+
+	static constexpr unsigned	DROP_BATCH = 1024;
+
+	const dict_table_t*		table = index->table;
+	page_id_t			drop[DROP_BATCH];
+	const page_size_t		page_size(dict_table_page_size(table));
+
+	while (true) {
+		if (index->search_info->ref_count == 0) {
+			return;
+		}
+
+		for (ulint i = 0; i < srv_buf_pool_instances; ++i) {
+			unsigned n_drop = 0;
+
+			buf_pool_t*	buf_pool = buf_pool_from_array(i);
+			mutex_enter(&buf_pool->LRU_list_mutex);
+			const buf_page_t* prev;
+
+			for (const buf_page_t* bpage
+				= UT_LIST_GET_LAST(buf_pool->LRU);
+			     bpage != nullptr; bpage = prev) {
+				prev = UT_LIST_GET_PREV(LRU, bpage);
+
+				ut_a(buf_page_in_file(bpage));
+
+				if (buf_page_get_state(bpage)
+				    != BUF_BLOCK_FILE_PAGE
+				    || (bpage->io_fix != BUF_IO_NONE
+					&& bpage->io_fix != BUF_IO_WRITE)
+				    || bpage->buf_fix_count > 0) {
+					continue;
+				}
+
+				const dict_index_t* block_index
+					= reinterpret_cast<const buf_block_t*>(
+						bpage)->index;
+				if (block_index == nullptr
+				    || block_index != index) {
+					continue;
+				}
+
+				drop[n_drop].copy_from(bpage->id);
+				if (++n_drop == DROP_BATCH) {
+					break;
+				}
+			}
+
+			mutex_exit(&buf_pool->LRU_list_mutex);
+
+			for (unsigned i = 0; i < n_drop; ++i) {
+				btr_search_drop_page_hash_when_freed(
+					drop[i], page_size);
+			}
+		}
+
+		os_thread_yield();
 	}
 }
 

@@ -483,14 +483,14 @@ struct trx_sys_t {
 					transactions which exist or existed */
 #endif /* UNIV_DEBUG */
 
-	char		pad1[CACHE_LINE_SIZE];
+	char		pad1[INNOBASE_CACHE_LINE_SIZE];
 					/*!< To avoid false sharing */
 	trx_ut_list_t	rw_trx_list;	/*!< List of active and committed in
 					memory read-write transactions, sorted
 					on trx id, biggest first. Recovered
 					transactions are always on this list. */
 
-	char		pad2[CACHE_LINE_SIZE];
+	char		pad2[INNOBASE_CACHE_LINE_SIZE];
 					/*!< To avoid false sharing */
 	trx_ut_list_t	mysql_trx_list;	/*!< List of transactions created
 					for MySQL. All user transactions are
@@ -511,7 +511,7 @@ struct trx_sys_t {
 					to ensure right order of removal and
 					consistent snapshot. */
 
-	char		pad3[CACHE_LINE_SIZE];
+	char		pad3[INNOBASE_CACHE_LINE_SIZE];
 					/*!< To avoid false sharing */
 
 	Rsegs		rsegs;		/*!< Vector of pointers to rollback

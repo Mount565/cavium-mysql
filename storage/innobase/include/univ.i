@@ -130,7 +130,9 @@ defined, the rwlocks are simply not tracked. */
 # define UNIV_PFS_RWLOCK
 #endif /* HAVE_PSI_RWLOCK_INTERFACE */
 
+#ifdef HAVE_PSI_FILE_INTERFACE
 #  define UNIV_PFS_IO
+#endif /* HAVE_PSI_FILE_INTERFACE */
 
 #ifdef HAVE_PSI_THREAD_INTERFACE
 # define UNIV_PFS_THREAD
@@ -459,9 +461,9 @@ typedef ib_uint64_t		ib_id_t;
 #define IB_ID_MAX		IB_UINT64_MAX
 
 /** Page number */
-typedef uint32			page_no_t;
+typedef uint32_t		page_no_t;
 /** Tablespace identifier */
-typedef uint32			space_id_t;
+typedef uint32_t		space_id_t;
 
 #define SPACE_ID_PF UINT32PF
 #define SPACE_ID_PFS UINT32PFS
@@ -574,7 +576,7 @@ typedef void* os_thread_ret_t;
 
 /** CPU cache line size */
 #ifndef UNIV_HOTBACKUP
-# define CACHE_LINE_SIZE MY_CACHE_LINE_SIZE
+# define INNOBASE_CACHE_LINE_SIZE MY_CACHE_LINE_SIZE
 #endif /* UNIV_HOTBACKUP */
 
 #include <stdio.h>

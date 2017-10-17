@@ -24,6 +24,8 @@
 # include <windows.h>
 #endif
 
+#include "my_compiler.h"
+
 /*
   the macro below defines (as an expression) the code that
   will be run in spin-loops. Intel manuals recummend to have PAUSE there.
