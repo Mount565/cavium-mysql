@@ -1,6 +1,0 @@
-fix_hurd_kfreebsd.patch
-mips64el.patch
-mysql-test-run-paths
-removedojo.patch
-fix_datadir_perm.patch
-fix_mtr_events_2.patch

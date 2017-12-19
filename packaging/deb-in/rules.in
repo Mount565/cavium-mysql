@@ -28,9 +28,15 @@ override_dh_auto_configure:
 	@DEB_RULES_DEBUG_CMAKE@
 
 	mkdir release && cd release && \
-	cmake .. \
+	sh -c  'PATH=$${MYSQL_BUILD_PATH:-"/bin:/usr/bin"} \
+		CC=$${MYSQL_BUILD_CC:-gcc} \
+		CXX=$${MYSQL_BUILD_CXX:-g++} \
+		LD_LIBRARY_PATH=$${MYSQL_LD_LIBRARRY_PATH:-""} \
+		cmake .. \
 		-DBUILD_CONFIG=mysql_release \
 		-DCMAKE_INSTALL_PREFIX=/usr \
+		-DCMAKE_C_FLAGS=$${MYSQL_CMAKE_C_FLAGS:-""} \
+		-DCMAKE_CXX_FLAGS=$${MYSQL_CMAKE_CXX_FLAGS:-""} \
 		-DINSTALL_DOCDIR=share/mysql/docs \
 		-DINSTALL_DOCREADMEDIR=share/mysql \
 		-DINSTALL_INCLUDEDIR=include/mysql \
@@ -51,8 +57,10 @@ override_dh_auto_configure:
 		-DCOMPILATION_COMMENT="MySQL @DEB_PRODUCTNAMEC@ Server (@DEB_LICENSENAME@)" \
 		-DINSTALL_LAYOUT=DEB \
 		-DDEB_PRODUCT=@DEB_PRODUCT@ \
+		-DWITH_BOOST=/build/ \
+		$(MYSQL_CMAKE_FLAGS) \
 		@DEB_CMAKE_EXTRAS@
-
+		'
 	touch $@
 
 override_dh_auto_build:
