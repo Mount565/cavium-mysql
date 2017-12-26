@@ -1,1 +1,1 @@
---plugin-dir=$DAEMONEXAMPLE_DIR
+--plugin-dir=$MYSQLTEST_VARDIR/plugin
