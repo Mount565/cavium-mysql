@@ -22,6 +22,12 @@ export DH_VERBOSE=1
 export CFLAGS=
 export CXXFLAGS=
 
+NUMJOBS=$(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+
+ifeq (,$(NUMJOBS))
+	NUMJOBS=1
+endif
+
 override_dh_auto_configure:
 	@echo "RULES.$@"
 
@@ -59,7 +65,7 @@ override_dh_auto_configure:
 		-DDEB_PRODUCT=@DEB_PRODUCT@ \
 		-DWITH_BOOST=/build/ \
 		$(MYSQL_CMAKE_FLAGS) \
-		@DEB_CMAKE_EXTRAS@
+		@DEB_CMAKE_EXTRAS@ \
 		'
 	touch $@
 
@@ -72,6 +78,12 @@ override_dh_auto_build:
 
 override_dh_auto_test:
 	@echo "RULES.$@"
+ifeq ($(findstring nocheck,$(DEB_BUILD_OPTIONS)),)
+	cp -r mysql-test/* release/mysql-test/
+	cp -r sql/share/* release/sql/share/
+	cp -r scripts/*sql release/scripts/
+	cd release/mysql-test && ./mtr --mtr-build-thread=300 --parallel=$(NUMJOBS) --big-test --suite-timeout=600 --testcase-timeout=60 --unit-tests-report --report-unstable-tests --force --max-test-fail=0 --experimental=collections/default.experimental || (cat var/log/bootstrap.log; false)
+endif
 	touch $@
 
 override_dh_auto_install:
