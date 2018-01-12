@@ -1,5 +1,6 @@
 --source include/have_innodb.inc
 --source include/have_innodb_16k.inc
+--source include/have_util_unzip.inc
 
 let newdir= $MYSQLTEST_VARDIR/tmp/log_corruption;
 --mkdir $newdir
