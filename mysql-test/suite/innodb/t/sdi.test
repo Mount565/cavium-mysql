@@ -1,3 +1,4 @@
+--source include/have_util_unzip.inc
 #
 # Skip this test for ndb because dumping SDI from mysql.ibd
 # causes extra output(coming from ndb_binlog_index)

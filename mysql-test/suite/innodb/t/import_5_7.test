@@ -1,3 +1,4 @@
+--source include/have_util_unzip.inc
 --source suite/innodb/include/ibd2sdi_replace_pattern.inc
 --echo # Import an .ibd from 5.7
 --copy_file $MYSQLTEST_VARDIR/std_data/57import.zip $MYSQL_TMP_DIR/57import.zip

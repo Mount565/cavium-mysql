@@ -1,3 +1,4 @@
+--source include/have_util_unzip.inc
 
 let newdir= $MYSQLTEST_VARDIR/tmp/log_corruption;
 --mkdir $newdir

@@ -1,3 +1,5 @@
+--source include/have_util_unzip.inc
+
 # This test case tests if we handle the corrupted redo logs for dynamic metadata
 # of tables(corrupted index bit in this case) correctly.
 # Since we save the data and log files in advance, anything that will modify

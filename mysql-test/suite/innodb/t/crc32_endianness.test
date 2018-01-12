@@ -3,6 +3,7 @@
 # on both big and little endian machines are readable. The two .ibd files
 # are precreated in crc32_endianness.zip which is extracted below.
 #
+-- source include/have_util_unzip.inc
 
 # Since we import a pre-created tablespace with 16k page size, we would get
 # this on InnoDB configured with non-16k page size:
