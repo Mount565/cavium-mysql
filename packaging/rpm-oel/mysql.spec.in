@@ -840,13 +840,14 @@ export CTEST_OUTPUT_ON_FAILURE=1
 make test
 %endif
 %if 0%{?runselftest}
-export MTR_BUILD_THREAD=auto
 pushd mysql-test
+parallel=$(echo %{?_smp_mflags} | sed -e 's/-j//')
 ./mtr \
-    --mem --parallel=auto --force --retry=0 \
-    --mysqld=--binlog-format=mixed \
-    --suite-timeout=720 --testcase-timeout=30 \
-    --clean-vardir
+    --mtr-build-thread=300 --parallel=${parallel}  \
+    --suite-timeout=600 --testcase-timeout=60 \
+    --report-unstable-tests \
+    --big-test --force --max-test-fail=0 \
+    --experimental=collections/default.experimental || (cat var/log/bootstrap.log; false)
 rm -r $(readlink var) var
 %endif
 
