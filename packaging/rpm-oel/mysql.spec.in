@@ -618,7 +618,7 @@ fi
 (
   export CFLAGS="%{optflags} -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -fno-strict-aliasing -fwrapv"
   export CXXFLAGS="$CFLAGS %{?el6:-felide-constructors} -fno-rtti -fno-exceptions"
-  pushd mysql-%{compatver}
+  pushd mysql-server-mysql-%{compatver}
   %configure \
     --with-readline \
     --without-debug \
@@ -654,7 +654,7 @@ fi
 )
 %else  # 0%{?rhel} < 7
 (
-  pushd mysql-%{compatver}
+  pushd mysql-server-mysql-%{compatver}
   mkdir build && pushd build
   cmake .. \
     -DBUILD_CONFIG=mysql_release \
@@ -778,7 +778,7 @@ mkdir release
 dirs="libmysql libmysql_r"
 %{?el7:dirs="build/libmysql build/libmysqld"}
 for dir in $dirs ; do
-    pushd mysql-%{compatver}/$dir
+    pushd mysql-server-mysql-%{compatver}/$dir
     make DESTDIR=%{buildroot} install
     popd
 done
