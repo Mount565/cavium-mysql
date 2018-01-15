@@ -1,4 +1,7 @@
-#!/bin/sh
+#!/bin/bash
+
+PS4="$0: + "
+set -eux
 
 cd /build
 cp /source/packaging/rpm-common/filter-{provides,requires}.sh .
