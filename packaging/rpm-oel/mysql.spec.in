@@ -43,7 +43,7 @@
 %{?WITH_CURL: %global curl_lib_option -DWITH_CURL=%{WITH_CURL}}
 
 # Regression tests may take a long time, override the default to skip them
-%{!?runselftest:%global runselftest 0}
+%{!?runselftest:%global runselftest 1}
 
 %{!?with_systemd:                %global systemd 0}
 %{?el7:                          %global systemd 1}
