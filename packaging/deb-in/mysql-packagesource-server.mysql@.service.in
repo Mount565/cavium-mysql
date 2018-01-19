@@ -33,7 +33,7 @@ PIDFile=/var/run/mysqld/mysqld-%i.pid
 @DEB_SERVICE_SERVER_EXECPRE@ @%I
 ExecStart=/usr/sbin/mysqld --defaults-group-suffix=@%I --daemonize --pid-file=/var/run/mysqld/mysqld-%i.pid
 TimeoutSec=600
-LimitNOFILE = 5000
+LimitNOFILE = 1048576
 Restart=on-failure
 RestartPreventExitStatus=1
 RuntimeDirectory=mysqld

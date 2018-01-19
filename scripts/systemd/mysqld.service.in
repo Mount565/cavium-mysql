@@ -50,7 +50,7 @@ ExecStart=@libexecdir@/mysqld --daemonize --pid-file=@SYSTEMD_PID_DIR@/mysqld.pi
 EnvironmentFile=-/etc/sysconfig/mysql
 
 # Sets open_files_limit
-LimitNOFILE = 5000
+LimitNOFILE = 1048576
 
 Restart=on-failure
 
