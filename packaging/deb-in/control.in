@@ -26,6 +26,7 @@ Depends: mysql-common (>= ${binary:Version}),
  mysql-@DEB_PRODUCTNAME@-server-core (= ${binary:Version}),
  perl,
  psmisc,
+ libtcmalloc-minimal4,
  ${shlibs:Depends}, ${misc:Depends}
 Breaks: mysql-common (<< 5.7.14), mysql-@DEB_PRODUCTNAME@-client (<< 5.7)
 Conflicts: mysql,
