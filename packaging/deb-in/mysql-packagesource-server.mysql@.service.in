@@ -52,3 +52,5 @@ Environment=MYSQLD_PARENT_PID=1
 
 RuntimeDirectory=mysqld
 RuntimeDirectoryMode=755
+Environment=LD_PRELOAD=/usr/lib/libtcmalloc_minimal.so.4
+Environment=TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES=128M
