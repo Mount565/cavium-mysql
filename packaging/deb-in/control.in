@@ -21,7 +21,7 @@ Description: MySQL Server meta package depending on latest version
 Package: mysql-@DEB_PRODUCTNAME@-server
 Architecture: any
 Pre-depends: debconf (>= 0.2.17), adduser
-Depends: mysql-common (>= ${binary:Version}), mysql-client (= ${binary:Version}), perl, psmisc,
+Depends: mysql-common (>= ${binary:Version}), mysql-client (= ${binary:Version}), perl, psmisc, libtcmalloc-minimal4,
  ${shlibs:Depends}, ${misc:Depends}
 Breaks: mysql-common (<< 5.7.14), mysql-@DEB_PRODUCTNAME@-client (<< 5.7)
 Conflicts: mysql,
