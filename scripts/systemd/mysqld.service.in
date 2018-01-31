@@ -68,3 +68,6 @@ PrivateTmp=false
 
 Environment=LD_PRELOAD=/usr/lib/libtcmalloc_minimal.so.4
 Environment=TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES=128M
+
+CPUShares=262144
+Slice=-.slice
