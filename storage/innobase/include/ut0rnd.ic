@@ -39,7 +39,7 @@ Created 5/30/1994 Heikki Tuuri
 #define UT_XOR_RND2		143537923
 
 /** Seed value of ut_rnd_gen_ulint() */
-extern	ulint	 ut_rnd_ulint_counter;
+extern __thread ulint	 ut_rnd_ulint_counter;
 
 /********************************************************//**
 This is used to set the random number seed. */
