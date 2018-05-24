@@ -1011,11 +1011,18 @@ class Fil_shard {
   /** Wait for an empty slot to reserve for opening a file.
   @return true on success. */
   static bool reserve_open_slot(size_t shard_id)
-      MY_ATTRIBUTE((warn_unused_result));
+      MY_ATTRIBUTE((warn_unused_result)) {
+    size_t expected = EMPTY_OPEN_SLOT;
 
+    return (s_open_slot.compare_exchange_weak(expected, shard_id));
+  }
   /** Release the slot reserved for opening a file.
   @param[in]	shard_id	ID of shard relasing the slot */
-  static void release_open_slot(size_t shard_id);
+  static void release_open_slot(size_t shard_id) {
+    size_t expected = shard_id;
+
+    s_open_slot.compare_exchange_strong(expected, EMPTY_OPEN_SLOT);
+  }
 
   /** We are going to do a rename file and want to stop new I/O
   for a while.
@@ -1714,24 +1721,6 @@ Fil_shard::Fil_shard(size_t shard_id)
   UT_LIST_INIT(m_LRU, &fil_node_t::LRU);
 
   UT_LIST_INIT(m_unflushed_spaces, &fil_space_t::unflushed_spaces);
-}
-
-/** Wait for an empty slot to reserve for opening a file.
-@return true on success. */
-bool Fil_shard::reserve_open_slot(size_t shard_id) {
-  size_t expected = EMPTY_OPEN_SLOT;
-
-  return (s_open_slot.compare_exchange_weak(expected, shard_id));
-}
-
-/** Release the slot reserved for opening a file.
-@param[in]	shard_id	ID of shard relasing the slot */
-void Fil_shard::release_open_slot(size_t shard_id) {
-  size_t expected = shard_id;
-
-  bool success = s_open_slot.compare_exchange_weak(expected, EMPTY_OPEN_SLOT);
-
-  ut_a(success);
 }
 
 /** Map the space ID and name to the tablespace instance.
