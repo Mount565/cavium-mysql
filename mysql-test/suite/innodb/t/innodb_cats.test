@@ -5,6 +5,8 @@
 --echo #                                                              #
 --echo ################################################################
 
+--source include/have_debug_sync.inc
+
   # This test case aims to expose the problem in the lock_rec_has_to_wait_cats
   # namely, that it ignores locks held by a transaction which is a victim of
   # a deadlock.
