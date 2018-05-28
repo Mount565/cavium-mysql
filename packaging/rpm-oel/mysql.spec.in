@@ -46,12 +46,12 @@
 %{?WITH_CURL: %global curl_lib_option -DWITH_CURL=%{WITH_CURL}}
 
 # Regression tests may take a long time, override the default to skip them
-%{!?runselftest:%global runselftest 0}
+%{!?runselftest:%global runselftest 1}
 
 %{!?with_systemd:                %global systemd 0}
 %{?el7:                          %global systemd 1}
 %{!?with_debuginfo:              %global nodebuginfo 1}
-%{!?product_suffix:              %global product_suffix community}
+%{!?product_suffix:              %global product_suffix cavium}
 %{!?feature_set:                 %global feature_set community}
 %{!?compilation_comment_release: %global compilation_comment_release MySQL Community Server - GPL}
 %{!?compilation_comment_debug:   %global compilation_comment_debug MySQL Community Server - GPL - Debug}
@@ -104,7 +104,8 @@ Vendor:         %{mysql_vendor}
 %if 0%{?compatlib}
 Source7:        %{compatsrc}
 %endif
-Source10:       https://downloads.sourceforge.net/boost/@BOOST_PACKAGE_NAME@.tar.bz2
+
+Source10:       https://downloads.sourceforge.net/boost/@BOOST_PACKAGE_NAME@.tar.gz
 Source90:       filter-provides.sh
 Source91:       filter-requires.sh
 %ifarch aarch64
@@ -630,7 +631,7 @@ fi
 (
   export CFLAGS="%{optflags} -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -fno-strict-aliasing -fwrapv"
   export CXXFLAGS="$CFLAGS %{?el6:-felide-constructors} -fno-rtti -fno-exceptions"
-  pushd mysql-%{compatver}
+  pushd mysql-server-mysql-%{compatver}
   %configure \
     --with-readline \
     --without-debug \
@@ -655,7 +656,7 @@ fi
 )
 %else  # 0%{?rhel} < 7
 (
-  pushd mysql-%{compatver}
+  pushd mysql-server-mysql-%{compatver}
   mkdir build && pushd build
   cmake .. \
     -DBUILD_CONFIG=mysql_release \
@@ -688,6 +689,13 @@ mkdir debug
   cd debug
   # Attempt to remove any optimisation flags from the debug build
   optflags=$(echo "%{optflags}" | sed -e 's/-O2 / /' -e 's/-Wp,-D_FORTIFY_SOURCE=2/ /')
+  # Adding LSE and thunderx cpu support
+  optflags="${optflags} -mcpu=thunderx+lse"
+  # Workaround for cases when GCC being used is newer than the native one
+  LDFLAGS="-static-libstdc++" \
+  CC="/opt/cavium/bin/gcc" \
+  CXX="/opt/cavium/bin/g++" \
+  LD_LIBRARY_PATH="/opt/cavium/lib:/opt/cavium/lib64" \
   cmake ../%{src_dir} \
            -DBUILD_CONFIG=mysql_release \
 %ifarch aarch64
@@ -734,6 +742,13 @@ mkdir debug
 mkdir release
 (
   cd release
+  # Adding LSE and thunderx cpu support
+  optflags="%{optflags} -mcpu=thunderx+lse"
+  # Workaround for cases when GCC being used is newer than the native one
+  LDFLAGS="-static-libstdc++" \
+  CC="/opt/cavium/bin/gcc" \
+  CXX="/opt/cavium/bin/g++" \
+  LD_LIBRARY_PATH="/opt/cavium/lib:/opt/cavium/lib64" \
   cmake ../%{src_dir} \
            -DBUILD_CONFIG=mysql_release \
 %ifarch aarch64
@@ -743,8 +758,8 @@ mkdir release
            -DINSTALL_LAYOUT=RPM \
            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
 	   -DWITH_BOOST=.. \
-           -DCMAKE_C_FLAGS="%{optflags}" \
-           -DCMAKE_CXX_FLAGS="%{optflags}" \
+           -DCMAKE_C_FLAGS="$optflags" \
+           -DCMAKE_CXX_FLAGS="$optflags" \
 %if 0%{?systemd}
            -DWITH_SYSTEMD=1 \
 %endif
@@ -782,7 +797,7 @@ mkdir release
 dirs="libmysql libmysql_r"
 %{?el7:dirs="build/libmysql build/libmysqld build/sql/share"}
 for dir in $dirs ; do
-    pushd mysql-%{compatver}/$dir
+    pushd mysql-server-mysql-%{compatver}/$dir
     make DESTDIR=%{buildroot} install
     popd
 done
@@ -839,16 +854,17 @@ rm -f %{buildroot}%{_datadir}/mysql-*/audit_log_filter_win_install.sql
 %if 0%{?runselftest} || 0%{?with_unittests}
 pushd release
 export CTEST_OUTPUT_ON_FAILURE=1
-make test || true
+make test
 %endif
 %if 0%{?runselftest}
-export MTR_BUILD_THREAD=auto
 pushd mysql-test
+parallel=$(echo %{?_smp_mflags} | sed -e 's/-j//')
 ./mtr \
-    --mem --parallel=auto --force --retry=0 \
-    --mysqld=--binlog-format=mixed \
-    --suite-timeout=720 --testcase-timeout=30 \
-    --clean-vardir
+    --mtr-build-thread=300 --parallel=${parallel}  \
+    --suite-timeout=600 --testcase-timeout=60 \
+    --report-unstable-tests \
+    --big-test --force --max-test-fail=0 \
+    --experimental=collections/default.experimental || (cat var/log/bootstrap.log; false)
 rm -r $(readlink var) var
 %endif
 
@@ -904,35 +920,36 @@ fi
 %files server
 %defattr(-, root, root, -)
 %doc %{?license_files_server}
-%doc %{src_dir}/Docs/INFO_SRC*
+# %{src_dir}/Docs/ChangeLog
+%doc release/Docs/INFO_SRC*
 %doc release/Docs/INFO_BIN*
-%attr(644, root, root) %{_mandir}/man1/innochecksum.1*
-%attr(644, root, root) %{_mandir}/man1/ibd2sdi.1*
-%attr(644, root, root) %{_mandir}/man1/my_print_defaults.1*
-%attr(644, root, root) %{_mandir}/man1/myisam_ftdump.1*
-%attr(644, root, root) %{_mandir}/man1/myisamchk.1*
-%attr(644, root, root) %{_mandir}/man1/myisamlog.1*
-%attr(644, root, root) %{_mandir}/man1/myisampack.1*
-%attr(644, root, root) %{_mandir}/man8/mysqld.8*
+# %attr(644, root, root) %{_mandir}/man1/innochecksum.1*
+# %attr(644, root, root) %{_mandir}/man1/ibd2sdi.1*
+# %attr(644, root, root) %{_mandir}/man1/my_print_defaults.1*
+# %attr(644, root, root) %{_mandir}/man1/myisam_ftdump.1*
+# %attr(644, root, root) %{_mandir}/man1/myisamchk.1*
+# %attr(644, root, root) %{_mandir}/man1/myisamlog.1*
+# %attr(644, root, root) %{_mandir}/man1/myisampack.1*
+# %attr(644, root, root) %{_mandir}/man8/mysqld.8*
 %if 0%{?systemd}
-%exclude %{_mandir}/man1/mysqld_multi.1*
-%exclude %{_mandir}/man1/mysqld_safe.1*
+# %exclude %{_mandir}/man1/mysqld_multi.1*
+# %exclude %{_mandir}/man1/mysqld_safe.1*
 %else
-%attr(644, root, root) %{_mandir}/man1/mysqld_multi.1*
-%attr(644, root, root) %{_mandir}/man1/mysqld_safe.1*
+# %attr(644, root, root) %{_mandir}/man1/mysqld_multi.1*
+# %attr(644, root, root) %{_mandir}/man1/mysqld_safe.1*
 %endif
-%attr(644, root, root) %{_mandir}/man1/mysqldumpslow.1*
-%attr(644, root, root) %{_mandir}/man1/mysql_secure_installation.1*
-%attr(644, root, root) %{_mandir}/man1/mysql_upgrade.1*
+# %attr(644, root, root) %{_mandir}/man1/mysqldumpslow.1*
+# %attr(644, root, root) %{_mandir}/man1/mysql_secure_installation.1*
+# %attr(644, root, root) %{_mandir}/man1/mysql_upgrade.1*
 %attr(644, root, root) %{_mandir}/man1/mysqlman.1*
-%attr(644, root, root) %{_mandir}/man1/mysql.server.1*
-%attr(644, root, root) %{_mandir}/man1/mysql_tzinfo_to_sql.1*
-%attr(644, root, root) %{_mandir}/man1/perror.1*
-%attr(644, root, root) %{_mandir}/man1/resolve_stack_dump.1*
-%attr(644, root, root) %{_mandir}/man1/resolveip.1*
-%attr(644, root, root) %{_mandir}/man1/mysql_ssl_rsa_setup.1*
-%attr(644, root, root) %{_mandir}/man1/lz4_decompress.1*
-%attr(644, root, root) %{_mandir}/man1/zlib_decompress.1*
+# %attr(644, root, root) %{_mandir}/man1/mysql.server.1*
+# %attr(644, root, root) %{_mandir}/man1/mysql_tzinfo_to_sql.1*
+# %attr(644, root, root) %{_mandir}/man1/perror.1*
+# %attr(644, root, root) %{_mandir}/man1/resolve_stack_dump.1*
+# %attr(644, root, root) %{_mandir}/man1/resolveip.1*
+# %attr(644, root, root) %{_mandir}/man1/mysql_ssl_rsa_setup.1*
+# %attr(644, root, root) %{_mandir}/man1/lz4_decompress.1*
+# %attr(644, root, root) %{_mandir}/man1/zlib_decompress.1*
 
 
 %config(noreplace) %{_sysconfdir}/my.cnf
@@ -1117,82 +1134,82 @@ fi
 %attr(755, root, root) %{_bindir}/mysqlslap
 %attr(755, root, root) %{_bindir}/mysql_config_editor
 
-%attr(644, root, root) %{_mandir}/man1/mysql.1*
-%attr(644, root, root) %{_mandir}/man1/mysqladmin.1*
-%attr(644, root, root) %{_mandir}/man1/mysqlbinlog.1*
-%attr(644, root, root) %{_mandir}/man1/mysqlcheck.1*
-%attr(644, root, root) %{_mandir}/man1/mysqldump.1*
-%attr(644, root, root) %{_mandir}/man1/mysqlpump.1*
-%attr(644, root, root) %{_mandir}/man1/mysqlimport.1*
-%attr(644, root, root) %{_mandir}/man1/mysqlshow.1*
-%attr(644, root, root) %{_mandir}/man1/mysqlslap.1*
-%attr(644, root, root) %{_mandir}/man1/mysql_config_editor.1*
+# %attr(644, root, root) %{_mandir}/man1/mysql.1*
+# %attr(644, root, root) %{_mandir}/man1/mysqladmin.1*
+# %attr(644, root, root) %{_mandir}/man1/mysqlbinlog.1*
+# %attr(644, root, root) %{_mandir}/man1/mysqlcheck.1*
+# %attr(644, root, root) %{_mandir}/man1/mysqldump.1*
+# %attr(644, root, root) %{_mandir}/man1/mysqlpump.1*
+# %attr(644, root, root) %{_mandir}/man1/mysqlimport.1*
+# %attr(644, root, root) %{_mandir}/man1/mysqlshow.1*
+# %attr(644, root, root) %{_mandir}/man1/mysqlslap.1*
+# %attr(644, root, root) %{_mandir}/man1/mysql_config_editor.1*
 
 %if 0%{?cluster}
-%attr(755, root, root) %{_bindir}/ndb_blob_tool
-%attr(755, root, root) %{_bindir}/ndb_config
-%attr(755, root, root) %{_bindir}/ndb_delete_all
-%attr(755, root, root) %{_bindir}/ndb_desc
-%attr(755, root, root) %{_bindir}/ndb_drop_index
-%attr(755, root, root) %{_bindir}/ndb_drop_table
-%attr(755, root, root) %{_bindir}/ndb_error_reporter
-%attr(755, root, root) %{_bindir}/ndb_index_stat
-%attr(755, root, root) %{_bindir}/ndb_import
-%attr(755, root, root) %{_bindir}/ndb_mgm
-%attr(755, root, root) %{_bindir}/ndb_move_data
-%attr(755, root, root) %{_bindir}/ndb_perror
-%attr(755, root, root) %{_bindir}/ndb_print_backup_file
-%attr(755, root, root) %{_bindir}/ndb_print_file
-%attr(755, root, root) %{_bindir}/ndb_print_frag_file
-%attr(755, root, root) %{_bindir}/ndb_print_schema_file
-%attr(755, root, root) %{_bindir}/ndb_print_sys_file
-%attr(755, root, root) %{_bindir}/ndb_redo_log_reader
-%attr(755, root, root) %{_bindir}/ndb_restore
-%attr(755, root, root) %{_bindir}/ndb_select_all
-%attr(755, root, root) %{_bindir}/ndb_select_count
-%attr(755, root, root) %{_bindir}/ndb_setup.py
-%attr(755, root, root) %{_bindir}/ndb_show_tables
-%attr(755, root, root) %{_bindir}/ndb_size.pl
-%attr(755, root, root) %{_bindir}/ndb_top
-%attr(755, root, root) %{_bindir}/ndb_waiter
-%attr(755, root, root) %{_bindir}/ndbinfo_select_all
+# %attr(755, root, root) %{_bindir}/ndb_blob_tool
+# %attr(755, root, root) %{_bindir}/ndb_config
+# %attr(755, root, root) %{_bindir}/ndb_delete_all
+# %attr(755, root, root) %{_bindir}/ndb_desc
+# %attr(755, root, root) %{_bindir}/ndb_drop_index
+# %attr(755, root, root) %{_bindir}/ndb_drop_table
+# %attr(755, root, root) %{_bindir}/ndb_error_reporter
+# %attr(755, root, root) %{_bindir}/ndb_index_stat
+# %attr(755, root, root) %{_bindir}/ndb_import
+# %attr(755, root, root) %{_bindir}/ndb_mgm
+# %attr(755, root, root) %{_bindir}/ndb_move_data
+# %attr(755, root, root) %{_bindir}/ndb_perror
+# %attr(755, root, root) %{_bindir}/ndb_print_backup_file
+# %attr(755, root, root) %{_bindir}/ndb_print_file
+# %attr(755, root, root) %{_bindir}/ndb_print_frag_file
+# %attr(755, root, root) %{_bindir}/ndb_print_schema_file
+# %attr(755, root, root) %{_bindir}/ndb_print_sys_file
+# %attr(755, root, root) %{_bindir}/ndb_redo_log_reader
+# %attr(755, root, root) %{_bindir}/ndb_restore
+# %attr(755, root, root) %{_bindir}/ndb_select_all
+# %attr(755, root, root) %{_bindir}/ndb_select_count
+# %attr(755, root, root) %{_bindir}/ndb_setup.py
+# %attr(755, root, root) %{_bindir}/ndb_show_tables
+# %attr(755, root, root) %{_bindir}/ndb_size.pl
+# %attr(755, root, root) %{_bindir}/ndb_top
+# %attr(755, root, root) %{_bindir}/ndb_waiter
+# %attr(755, root, root) %{_bindir}/ndbinfo_select_all
 
-%attr(644, root, root) %{_mandir}/man1/ndb-common-options.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_blob_tool.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_config.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_cpcd.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_delete_all.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_desc.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_drop_index.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_drop_table.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_error_reporter.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_import.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_index_stat.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_mgm.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_move_data.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_perror.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_print_backup_file.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_print_file.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_print_frag_file.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_print_schema_file.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_print_sys_file.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_restore.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_select_all.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_select_count.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_setup.py.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_show_tables.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_size.pl.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_top.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_waiter.1*
-%attr(644, root, root) %{_mandir}/man1/ndb_redo_log_reader.1*
-%attr(644, root, root) %{_mandir}/man1/ndbinfo_select_all.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb-common-options.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_blob_tool.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_config.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_cpcd.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_delete_all.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_desc.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_drop_index.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_drop_table.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_error_reporter.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_import.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_index_stat.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_mgm.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_move_data.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_perror.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_print_backup_file.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_print_file.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_print_frag_file.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_print_schema_file.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_print_sys_file.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_restore.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_select_all.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_select_count.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_setup.py.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_show_tables.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_size.pl.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_top.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_waiter.1*
+# %attr(644, root, root) %{_mandir}/man1/ndb_redo_log_reader.1*
+# %attr(644, root, root) %{_mandir}/man1/ndbinfo_select_all.1*
 %endif #cluster
 
 %files devel
 %defattr(-, root, root, -)
 %doc %{?license_files_server}
-%attr(644, root, root) %{_mandir}/man1/comp_err.1*
-%attr(644, root, root) %{_mandir}/man1/mysql_config.1*
+# %attr(644, root, root) %{_mandir}/man1/comp_err.1*
+# %attr(644, root, root) %{_mandir}/man1/mysql_config.1*
 %attr(755, root, root) %{_bindir}/mysql_config
 %ifarch %{multiarchs}
 %attr(755, root, root) %{_bindir}/mysql_config-%{__isa_bits}
