@@ -29,15 +29,27 @@ export DH_VERBOSE=1
 export CFLAGS=
 export CXXFLAGS=
 
+NUMJOBS=$(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+
+ifeq (,$(NUMJOBS))
+	NUMJOBS=1
+endif
+
 override_dh_auto_configure:
 	@echo "RULES.$@"
 
 	@DEB_RULES_DEBUG_CMAKE@
 
 	mkdir release && cd release && \
-	cmake .. \
+	sh -c  'PATH=$${MYSQL_BUILD_PATH:-"/bin:/usr/bin"} \
+		CC=$${MYSQL_BUILD_CC:-gcc} \
+		CXX=$${MYSQL_BUILD_CXX:-g++} \
+		LD_LIBRARY_PATH=$${MYSQL_LD_LIBRARRY_PATH:-""} \
+		cmake .. \
 		-DBUILD_CONFIG=mysql_release \
 		-DCMAKE_INSTALL_PREFIX=/usr \
+		-DCMAKE_C_FLAGS=$${MYSQL_CMAKE_C_FLAGS:-""} \
+		-DCMAKE_CXX_FLAGS=$${MYSQL_CMAKE_CXX_FLAGS:-""} \
 		-DINSTALL_INCLUDEDIR=include/mysql \
 		-DINSTALL_LIBDIR=lib/$(DEB_HOST_MULTIARCH) \
 		-DINSTALL_MANDIR=share/man \
@@ -53,8 +65,10 @@ override_dh_auto_configure:
 		-DCOMPILATION_COMMENT="MySQL @DEB_PRODUCTNAMEC@ Server - @DEB_LICENSENAME@" \
 		-DINSTALL_LAYOUT=DEB \
 		-DDEB_PRODUCT=@DEB_PRODUCT@ \
-		@DEB_CMAKE_EXTRAS@
-
+		-DWITH_BOOST=/build/ \
+		$(MYSQL_CMAKE_FLAGS) \
+		@DEB_CMAKE_EXTRAS@ \
+		'
 	touch $@
 
 override_dh_auto_build:
@@ -66,9 +80,12 @@ override_dh_auto_build:
 
 override_dh_auto_test:
 	@echo "RULES.$@"
-	export CTEST_OUTPUT_ON_FAILURE=1
-	cd release && \
-	make test || true
+ifeq ($(findstring nocheck,$(DEB_BUILD_OPTIONS)),)
+	cp -r mysql-test/* release/mysql-test/
+	cp -r sql/share/* release/sql/share/
+	cp -r scripts/*sql release/scripts/
+	cd release/mysql-test && ./mtr --mtr-build-thread=300 --parallel=$(NUMJOBS) --big-test --suite-timeout=600 --testcase-timeout=60 --unit-tests-report --report-unstable-tests --force --max-test-fail=0 --experimental=collections/default.experimental || (cat var/log/bootstrap.log; false)
+endif
 	touch $@
 
 @DEB_RULES_STRIP@
