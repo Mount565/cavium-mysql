@@ -10,6 +10,8 @@
 # Schema mismatch (Tablespace to be imported has a different page size than
 # this server. Server page size is 4096, whereas tablespace page size is 16384)
 
+-- source include/have_util_unzip.inc
+
 CREATE TABLE crc32_big_endian (a VARCHAR(16)) ENGINE=INNODB charset latin1
 ROW_FORMAT=COMPACT;
 CREATE TABLE crc32_little_endian (a VARCHAR(16)) ENGINE=INNODB charset latin1
